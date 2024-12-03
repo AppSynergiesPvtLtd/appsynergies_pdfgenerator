@@ -16,7 +16,7 @@ RUN apt-get update && \
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Expose the port Streamlit will use
-EXPOSE 8051
+EXPOSE 8080
 
 # Set the Streamlit command with the port from $PORT
 CMD ["streamlit", "run", "app.py", "--server.port=$PORT", "--server.headless=true"]

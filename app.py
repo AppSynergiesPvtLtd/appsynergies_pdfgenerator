@@ -11,7 +11,7 @@ from docx.shared import Pt
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.enum.text import WD_BREAK
 
-port = int(os.environ.get("PORT", 8051))
+port = int(os.environ.get("PORT", 8080))
 
 st.run(host="0.0.0.0", port=port)
 
