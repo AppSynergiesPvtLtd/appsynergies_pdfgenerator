@@ -229,6 +229,6 @@ if st.button("Generate Document"):
             st.error(f"An error occurred: {e}")
 if __name__ == "__main__":
     import os
-    port = int(os.environ.get("PORT", 8051))
+    port = int(os.environ.get("PORT", 8080))
     st._is_running_with_streamlit = False
     st.run(host="0.0.0.0", port=port)
