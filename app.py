@@ -11,6 +11,8 @@ from docx.shared import Pt
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.enum.text import WD_BREAK
 
+port = int(os.environ.get("PORT", 8080))
+st.run(host="0.0.0.0", port=port)
 
 # Function to edit the Word template dynamically
 def edit_word_template(template_path, output_path, placeholders):
@@ -227,8 +229,4 @@ if st.button("Generate Document"):
                 st.download_button(f"Download {option} (PDF)", pdf_file, file_name=f"{option}_Document.pdf")
         except Exception as e:
             st.error(f"An error occurred: {e}")
-if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 8080))
-    st._is_running_with_streamlit = False
-    st.run(host="0.0.0.0", port=port)
+
