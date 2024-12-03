@@ -10,6 +10,7 @@ from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.shared import Pt
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.enum.text import WD_BREAK
+
 port = int(os.environ.get("PORT", 8501))
 # Function to edit the Word template dynamically
 def edit_word_template(template_path, output_path, placeholders):
