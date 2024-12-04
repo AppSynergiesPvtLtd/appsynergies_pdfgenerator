@@ -45,19 +45,17 @@ def edit_word_template(template_path, output_path, placeholders):
 
                                 # Maintain the font style
                                 for run in paragraph.runs:
-                                    run.font.name = 'Calibri'
-                                    run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
                                     run.font.size = Pt(10)  # Set font size to match other text and make it smaller
 
         # Adjust signature alignment specifically for NDA India and ROW templates
         for para in doc.paragraphs:
             if "Signature Details:" in para.text:
+                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 for i, run in enumerate(para.runs):
                     if "<<Company Name>>" in run.text:
                         run.text = run.text.replace("<<Company Name>>", placeholders.get("<<Company Name>>", ""))
                     if "<< Date >>" in run.text:
                         run.text = run.text.replace("<< Date >>", placeholders.get("<< Date >>", ""))
-                        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                         for r in para.runs:
                             r.font.size = Pt(8)  # Make the date font size consistent
 
@@ -119,8 +117,6 @@ def edit_pricing_template(template_path, output_path, name, designation, contact
                         for paragraph in cell.paragraphs:
                             paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
                             for run in paragraph.runs:
-                                run.font.name = 'Calibri'
-                                run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
                                 run.font.size = Pt(8)  # Set font size smaller
                 spoc_table_found = False
             else:
