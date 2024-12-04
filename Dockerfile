@@ -9,14 +9,7 @@ COPY . /app
 
 # Install dependencies and LibreOffice
 RUN apt-get update && \
-    apt-get install -y libreoffice libreoffice-writer fonts-liberation wget unzip && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Download and install Google Fonts
-RUN wget -O /tmp/roboto.zip "https://github.com/google/fonts/raw/main/apache/roboto/Roboto%5Bwdth%2Cwght%5D.ttf" && \
-    mkdir -p /usr/share/fonts/truetype/roboto && \
-    mv /tmp/roboto.zip /usr/share/fonts/truetype/roboto/Roboto-Regular.ttf && \
-    fc-cache -f -v && \
+    apt-get install -y libreoffice libreoffice-writer fonts-liberation fonts-roboto && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies

@@ -14,7 +14,6 @@ from docx.enum.text import WD_BREAK
 port = int(os.environ.get("PORT", 8501))
 
 # Function to edit the Word template dynamically
-# Function to edit the Word template dynamically
 def edit_word_template(template_path, output_path, placeholders):
     try:
         doc = Document(template_path)
@@ -24,7 +23,7 @@ def edit_word_template(template_path, output_path, placeholders):
             for key, value in placeholders.items():
                 if key in para.text:
                     para.text = para.text.replace(key, value)
-                    # Set alignment consistently to justify
+                    # Set alignment to justify
                     para.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
                     # Maintain font style
@@ -45,8 +44,7 @@ def edit_word_template(template_path, output_path, placeholders):
 
                         # Set paragraph alignment for each paragraph in the cell
                         for paragraph in cell.paragraphs:
-                            # Consistent alignment for all paragraphs
-                            paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+                            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
                             # Maintain font style
                             for run in paragraph.runs:
@@ -57,21 +55,24 @@ def edit_word_template(template_path, output_path, placeholders):
                         # Set vertical alignment of the cell (top, center, bottom)
                         cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
 
-        # Ensure consistent alignment for specific sections like signature blocks
+        # Adjust signature alignment specifically for NDA India and ROW templates
         for para in doc.paragraphs:
             if "Signature Details:" in para.text:
-                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                for run in para.runs:
-                    run.font.size = Pt(8)  # Ensure consistent font size
-                    run.font.name = 'Calibri'
-                    run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
+                para.alignment = WD_ALIGN_PARAGRAPH.CENTER  # Ensure signature section is centered
+                for i, run in enumerate(para.runs):
+                    if "<<Company Name>>" in run.text:
+                        run.text = run.text.replace("<<Company Name>>", placeholders.get("<<Company Name>>", ""))
+                    if "<< Date >>" in run.text:
+                        run.text = run.text.replace("<< Date >>", placeholders.get("<< Date >>", ""))
+                        for r in para.runs:
+                            r.font.size = Pt(8)  # Make the date font size consistent
+                            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
         # Save the updated document
         doc.save(output_path)
         return output_path
     except Exception as e:
         raise Exception(f"Error editing Word template: {e}")
-
 
 # Function to handle pricing document edit
 def edit_pricing_template(template_path, output_path, name, designation, contact, email, location, selected_services):
