@@ -8,7 +8,7 @@ COPY . /app
 
 # Install LibreOffice and other required packages
 RUN apt-get update && \
-    apt-get install -y libreoffice curl && \
+    apt-get install -y libreoffice curl fonts-liberation && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
