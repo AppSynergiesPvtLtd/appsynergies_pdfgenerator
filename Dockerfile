@@ -6,23 +6,20 @@ WORKDIR /app
 # Copy application files
 COPY . /app
 
-# Install LibreOffice and other required packages
+# Install required packages including LibreOffice
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends software-properties-common && \
-    add-apt-repository ppa:libreoffice/ppa && \
-    apt-get update && \
-    apt-get install -y libreoffice curl fonts-liberation && \
+    apt-get install -y --no-install-recommends \
+    libreoffice \
+    fonts-liberation && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Google Fonts
+# Install Google Fonts and refresh the font cache
 RUN pip install googlefonts-installer && \
-    googlefonts-installer install "Liberation Sans" "Arial" --skip-on-missing
-
-# Refresh the font cache to make sure the fonts are available
-RUN fc-cache -f -v
+    googlefonts-installer install "Liberation Sans" "Arial" --skip-on-missing && \
+    fc-cache -f -v
 
 # Expose the port the Streamlit app will run on
 EXPOSE 8501
