@@ -26,4 +26,4 @@ RUN wget https://github.com/google/fonts/archive/main.zip -O /tmp/fonts.zip && \
 EXPOSE 8501
 
 # Set the Streamlit command with the port from $PORT
-CMD streamlit run pdfgenerator.py --server.port=$PORT --server.address=0.0.0.0
+CMD streamlit run app.py --server.port=$PORT --server.address=0.0.0.0
