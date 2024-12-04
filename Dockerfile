@@ -17,9 +17,14 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Install Google Fonts using googlefonts-installer
-RUN pip install googlefonts-installer && \
-    googlefonts-installer install "Roboto" "Lato" --skip-on-missing && \
-    fc-cache -f -v
+# Download Google fonts directly
+RUN apt-get update && \
+    apt-get install -y libreoffice libreoffice-writer fonts-liberation && \
+    curl -L -o /usr/share/fonts/truetype/roboto.zip https://fonts.google.com/download?family=Roboto && \
+    unzip /usr/share/fonts/truetype/roboto.zip -d /usr/share/fonts/truetype/roboto/ && \
+    fc-cache -f -v && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
 
 # Expose the port Streamlit will use
 EXPOSE 8501
