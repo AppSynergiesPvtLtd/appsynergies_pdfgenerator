@@ -7,14 +7,20 @@ WORKDIR /app
 # Copy your application files
 COPY . /app
 
-# Install a specific version of LibreOffice
+# Install dependencies and LibreOffice
 RUN apt-get update && \
-    apt-get install -y libreoffice=1:7.3.0-1 && \  # Ensure the version matches your local environment
+    apt-get install -y libreoffice && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Install Python dependencies using the generated requirements file
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Optional: Install fonts (if necessary)
+RUN apt-get update && apt-get install -y \
+    ttf-mscorefonts-installer && \
+    fc-cache -f -v && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Expose the port Streamlit will use
 EXPOSE 8501
