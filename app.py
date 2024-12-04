@@ -4,8 +4,6 @@ from datetime import datetime
 import os
 import platform
 import subprocess
-import comtypes.client
-import pythoncom
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.shared import Pt
@@ -153,6 +151,7 @@ def convert_to_pdf(doc_path, pdf_path):
     if platform.system() == "Windows":
         try:
             import comtypes.client
+            import pythoncom
             pythoncom.CoInitialize()  # Initialize the COM library
             word = comtypes.client.CreateObject("Word.Application")
             doc = word.Documents.Open(doc_path)
