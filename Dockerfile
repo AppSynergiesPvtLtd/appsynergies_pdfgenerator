@@ -15,6 +15,9 @@ RUN apt-get update && \
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+RUN apt-get update && apt-get install -y ttf-mscorefonts-installer && \
+    fc-cache -f -v
+
 # Expose the port Streamlit will use
 EXPOSE 8501
 
