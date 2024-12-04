@@ -7,9 +7,15 @@ WORKDIR /app
 # Copy your application files
 COPY . /app
 
-# Install dependencies and LibreOffice
+# Install curl and fonts
+RUN apt-get update && apt-get install -y curl fonts-liberation && \
+    curl -L -o /usr/share/fonts/truetype/roboto.zip https://fonts.google.com/download?family=Roboto && \
+    unzip /usr/share/fonts/truetype/roboto.zip -d /usr/share/fonts/truetype/roboto/ && \
+    fc-cache -f -v && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install LibreOffice
 RUN apt-get update && \
-    apt-get install -y libreoffice libreoffice-writer fonts-liberation fonts-roboto && \
+    apt-get install -y libreoffice libreoffice-writer && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
