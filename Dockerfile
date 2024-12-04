@@ -9,7 +9,7 @@ COPY . /app
 
 # Install dependencies and LibreOffice
 RUN apt-get update && \
-    apt-get install -y libreoffice fonts-liberation && \
+    apt-get install -y libreoffice && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -17,7 +17,8 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Install Google Fonts
-RUN pip install googlefonts-installer && \
+RUN apt-get update && apt-get install -y fonts-liberation && \
+    pip install googlefonts-installer && \
     googlefonts-installer install "Liberation Sans" "Arial" --skip-on-missing && \
     fc-cache -f -v
 
