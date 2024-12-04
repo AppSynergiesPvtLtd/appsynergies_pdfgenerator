@@ -15,10 +15,6 @@ RUN apt-get update && \
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN apt-get update && apt-get install -y software-properties-common && \
-    add-apt-repository "deb http://archive.ubuntu.com/ubuntu/ $(lsb_release -sc) multiverse" && \
-    apt-get update && apt-get install -y ttf-mscorefonts-installer
-
 # Expose the port Streamlit will use
 EXPOSE 8501
 

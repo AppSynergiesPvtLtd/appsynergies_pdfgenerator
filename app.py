@@ -58,6 +58,7 @@ def edit_word_template(template_path, output_path, placeholders):
                         run.text = run.text.replace("<< Date >>", placeholders.get("<< Date >>", ""))
                         for r in para.runs:
                             r.font.size = Pt(8)  # Make the date font size consistent
+                            para.alignment = WD_ALIGN_PARAGRAPH.CENTER  # Explicitly set alignment again to ensure cloud consistency
 
         # Save the updated document
         doc.save(output_path)
