@@ -16,8 +16,10 @@ RUN apt-get update && \
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Skip Google Fonts installation as it may be causing errors
-# Instead, ensure liberation fonts are included
+# Install Google Fonts using googlefonts-installer
+RUN pip install googlefonts-installer && \
+    googlefonts-installer install "Roboto" "Lato" --skip-on-missing && \
+    fc-cache -f -v
 
 # Expose the port Streamlit will use
 EXPOSE 8501
