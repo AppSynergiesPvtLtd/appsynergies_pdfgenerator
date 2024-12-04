@@ -26,12 +26,6 @@ def edit_word_template(template_path, output_path, placeholders):
                     # Set alignment to justify
                     para.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
-                    # Maintain font style
-                    for run in para.runs:
-                        run.font.name = 'Calibri'
-                        run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
-                        run.font.size = Pt(10)
-
         # Replace placeholders in tables and set alignment
         for table in doc.tables:
             for row in table.rows:
@@ -42,31 +36,30 @@ def edit_word_template(template_path, output_path, placeholders):
                                 # Replace placeholder
                                 cell.text = cell.text.replace(key, value)
 
-                        # Set paragraph alignment for each paragraph in the cell
-                        for paragraph in cell.paragraphs:
-                            paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                # Set paragraph alignment for each paragraph in the cell
+                                for paragraph in cell.paragraphs:
+                                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-                            # Maintain font style
-                            for run in paragraph.runs:
-                                run.font.name = 'Calibri'
-                                run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
-                                run.font.size = Pt(10)
+                                # Set vertical alignment of the cell (top, center, bottom)
+                                cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
 
-                        # Set vertical alignment of the cell (top, center, bottom)
-                        cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+                                # Maintain the font style
+                                for run in paragraph.runs:
+                                    run.font.name = 'Calibri'
+                                    run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
+                                    run.font.size = Pt(10)  # Set font size to match other text and make it smaller
 
         # Adjust signature alignment specifically for NDA India and ROW templates
         for para in doc.paragraphs:
             if "Signature Details:" in para.text:
-                para.alignment = WD_ALIGN_PARAGRAPH.CENTER  # Ensure signature section is centered
                 for i, run in enumerate(para.runs):
                     if "<<Company Name>>" in run.text:
                         run.text = run.text.replace("<<Company Name>>", placeholders.get("<<Company Name>>", ""))
                     if "<< Date >>" in run.text:
                         run.text = run.text.replace("<< Date >>", placeholders.get("<< Date >>", ""))
+                        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                         for r in para.runs:
                             r.font.size = Pt(8)  # Make the date font size consistent
-                            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
         # Save the updated document
         doc.save(output_path)
@@ -92,13 +85,6 @@ def edit_pricing_template(template_path, output_path, name, designation, contact
             if "<<Client Location>>" in para.text:
                 para.text = para.text.replace("<<Client Location>>", location)
 
-            # Set alignment to justify and maintain font style
-            para.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-            for run in para.runs:
-                run.font.name = 'Calibri'
-                run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
-                run.font.size = Pt(10)
-
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
@@ -112,20 +98,6 @@ def edit_pricing_template(template_path, output_path, name, designation, contact
                         cell.text = cell.text.replace("<<Client Email>>", email)
                     if "<<Client Location>>" in cell.text:
                         cell.text = cell.text.replace("<<Client Location>>", location)
-
-                    # Set alignment for each paragraph in the cell
-                    for paragraph in cell.paragraphs:
-                        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-                        # Maintain font style
-                        for run in paragraph.runs:
-                            run.font.name = 'Calibri'
-                            run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
-                            run.font.size = Pt(8)
-
-                    # Set vertical alignment of the cell
-                    cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
-
         # Process tables to find and update the SPOC table and service table separately
         spoc_table_found = False
 
