@@ -13,7 +13,8 @@ RUN apt-get update && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Install Google Fonts
 RUN pip install googlefonts-installer && \
@@ -24,4 +25,4 @@ RUN pip install googlefonts-installer && \
 EXPOSE 8501
 
 # Set the Streamlit command with the port from $PORT
-CMD streamlit run app.py --server.port=$PORT --server.address=0.0.0.0
+CMD streamlit run pdfgenerator.py --server.port=$PORT --server.address=0.0.0.0
