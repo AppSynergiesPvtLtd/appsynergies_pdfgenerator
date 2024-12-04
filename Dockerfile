@@ -9,18 +9,15 @@ COPY . /app
 
 # Install dependencies and LibreOffice
 RUN apt-get update && \
-    apt-get install -y libreoffice libreoffice-writer fonts-liberation wget unzip && \
+    apt-get install -y libreoffice libreoffice-writer fonts-liberation && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Download and install Google Fonts manually
-RUN wget https://github.com/google/fonts/archive/main.zip -O /tmp/fonts.zip && \
-    unzip /tmp/fonts.zip -d /usr/share/fonts && \
-    rm /tmp/fonts.zip && \
-    fc-cache -f -v
+# Skip Google Fonts installation as it may be causing errors
+# Instead, ensure liberation fonts are included
 
 # Expose the port Streamlit will use
 EXPOSE 8501
