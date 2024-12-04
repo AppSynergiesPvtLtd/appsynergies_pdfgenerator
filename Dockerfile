@@ -26,4 +26,4 @@ RUN apt-get update && apt-get install -y fonts-liberation && \
 EXPOSE 8501
 
 # Set the Streamlit command with the port from $PORT
-CMD streamlit run pdfgenerator.py --server.port=$PORT --server.address=0.0.0.0
+CMD streamlit run app.py --server.port=$PORT --server.address=0.0.0.0
