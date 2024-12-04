@@ -23,7 +23,7 @@ def edit_word_template(template_path, output_path, placeholders):
             for key, value in placeholders.items():
                 if key in para.text:
                     para.text = para.text.replace(key, value)
-                    # Set alignment to justify
+                    # Set alignment to justify for general content
                     para.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
         # Replace placeholders in tables and set alignment
@@ -50,7 +50,7 @@ def edit_word_template(template_path, output_path, placeholders):
         # Adjust signature alignment specifically for NDA India and ROW templates
         for para in doc.paragraphs:
             if "Signature Details:" in para.text:
-                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                para.alignment = WD_ALIGN_PARAGRAPH.CENTER  # Ensure signature section is centered
                 for i, run in enumerate(para.runs):
                     if "<<Company Name>>" in run.text:
                         run.text = run.text.replace("<<Company Name>>", placeholders.get("<<Company Name>>", ""))
@@ -72,30 +72,29 @@ def edit_pricing_template(template_path, output_path, name, designation, contact
 
         # Replace placeholders in the general paragraphs
         for para in doc.paragraphs:
-            if "<<Client Name>>" in para.text:
-                para.text = para.text.replace("<<Client Name>>", name)
-            if "<<Client Designation>>" in para.text:
-                para.text = para.text.replace("<<Client Designation>>", designation)
-            if "<<Client Contact>>" in para.text:
-                para.text = para.text.replace("<<Client Contact>>", contact)
-            if "<<Client Email>>" in para.text:
-                para.text = para.text.replace("<<Client Email>>", email)
-            if "<<Client Location>>" in para.text:
-                para.text = para.text.replace("<<Client Location>>", location)
+            for key, value in {"<<Client Name>>": name, "<<Client Designation>>": designation, "<<Client Contact>>": contact, "<<Client Email>>": email, "<<Client Location>>": location}.items():
+                if key in para.text:
+                    para.text = para.text.replace(key, value)
+                    # Set alignment to justify for general content
+                    para.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
 
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
-                    if "<<Client Name>>" in cell.text:
-                        cell.text = cell.text.replace("<<Client Name>>", name)
-                    if "<<Client Designation>>" in cell.text:
-                        cell.text = cell.text.replace("<<Client Designation>>", designation)
-                    if "<<Client Contact>>" in cell.text:
-                        cell.text = cell.text.replace("<<Client Contact>>", contact)
-                    if "<<Client Email>>" in cell.text:
-                        cell.text = cell.text.replace("<<Client Email>>", email)
-                    if "<<Client Location>>" in cell.text:
-                        cell.text = cell.text.replace("<<Client Location>>", location)
+                    for key, value in {"<<Client Name>>": name, "<<Client Designation>>": designation, "<<Client Contact>>": contact, "<<Client Email>>": email, "<<Client Location>>": location}.items():
+                        if key in cell.text:
+                            cell.text = cell.text.replace(key, value)
+                            # Set paragraph alignment for each paragraph in the cell
+                            for paragraph in cell.paragraphs:
+                                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+                            # Set vertical alignment of the cell (top, center, bottom)
+                            cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+
+                            # Maintain the font style
+                            for run in paragraph.runs:
+                                run.font.size = Pt(8)  # Set font size smaller
+
         # Process tables to find and update the SPOC table and service table separately
         spoc_table_found = False
 
