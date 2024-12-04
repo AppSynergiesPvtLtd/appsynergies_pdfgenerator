@@ -8,6 +8,9 @@ COPY . /app
 
 # Install LibreOffice and other required packages
 RUN apt-get update && \
+    apt-get install -y --no-install-recommends software-properties-common && \
+    add-apt-repository ppa:libreoffice/ppa && \
+    apt-get update && \
     apt-get install -y libreoffice curl fonts-liberation && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
