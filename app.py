@@ -2,8 +2,6 @@ import streamlit as st
 from docx import Document
 from datetime import datetime
 import os
-import platform
-import subprocess
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.shared import Pt
@@ -146,29 +144,6 @@ def edit_pricing_template(template_path, output_path, name, designation, contact
     except Exception as e:
         raise Exception(f"Error editing Word template: {e}")
 
-# Function to convert Word to PDF
-def convert_to_pdf(doc_path, pdf_path):
-    if platform.system() == "Windows":
-        try:
-            import comtypes.client
-            import pythoncom
-            pythoncom.CoInitialize()  # Initialize the COM library
-            word = comtypes.client.CreateObject("Word.Application")
-            doc = word.Documents.Open(doc_path)
-            doc.SaveAs(pdf_path, FileFormat=17)
-            doc.Close()
-            word.Quit()
-            print("Converted to PDF using COM")
-        except Exception as e:
-            raise Exception(f"Error using COM on Windows: {e}")
-    else:
-        try:
-            # LibreOffice method for non-Windows
-            subprocess.run(['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', os.path.dirname(pdf_path), doc_path])
-            print("Converted to PDF using LibreOffice")
-        except Exception as e:
-            raise Exception(f"Error using LibreOffice: {e}")
-
 # Streamlit App
 st.title("Dynamic Document Generator")
 
@@ -246,7 +221,6 @@ if st.button("Generate Document", key="generate_button"):
     else:
         current_date_str = datetime.now().strftime("%d_%b_%Y").lower()
         word_output_path = os.path.join(base_dir, f"{client_name.lower()}_{option.lower().replace(' ', '_')}_{current_date_str}.docx")
-        pdf_output_path = os.path.join(base_dir, f"{client_name.lower()}_{option.lower().replace(' ', '_')}_{current_date_str}.pdf")
 
         try:
             if option == "Pricing List":
@@ -255,8 +229,6 @@ if st.button("Generate Document", key="generate_button"):
                 )
             else:
                 updated_word_path = edit_word_template(template_path, word_output_path, placeholders)
-
-            convert_to_pdf(updated_word_path, pdf_output_path)
 
             st.session_state["document_generated"] = True
             st.session_state["current_options"] = {
@@ -308,8 +280,5 @@ if options_changed():
 if st.session_state.get("document_generated"):
     current_date_str = st.session_state.get("current_options").get("current_date_str")
     word_output_path = os.path.join(base_dir, f"{client_name.lower()}_{option.lower().replace(' ', '_')}_{current_date_str}.docx")
-    pdf_output_path = os.path.join(base_dir, f"{client_name.lower()}_{option.lower().replace(' ', '_')}_{current_date_str}.pdf")
     with open(word_output_path, "rb") as word_file:
         st.download_button(f"Download {option} (Word)", word_file, file_name=f"{client_name.lower()}_{option.lower().replace(' ', '_')}_{current_date_str}.docx", key="download_word")
-    with open(pdf_output_path, "rb") as pdf_file:
-        st.download_button(f"Download {option} (PDF)", pdf_file, file_name=f"{client_name.lower()}_{option.lower().replace(' ', '_')}_{current_date_str}.pdf", key="download_pdf")
