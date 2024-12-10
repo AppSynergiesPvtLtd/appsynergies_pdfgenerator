@@ -21,16 +21,22 @@ def apply_formatting(run, font_name, font_size, bold=False):
 def replace_and_format(doc, placeholders, font_name, font_size, option):
     """Replace placeholders and apply formatting."""
     for para in doc.paragraphs:
-        if para.text:  # Check if paragraph has text
+        if para.text.strip():  # Check if paragraph has text
             for key, value in placeholders.items():
                 if key in para.text:
                     for run in para.runs:
                         if key in run.text:
-                            run.text = run.text.replace(key, value)
-                            if key == "<< Date >>":  # Apply specific formatting for Date
+                            # Bold and formatted for paragraph date
+                            if key == "<< Date >>":
+                                run.text = run.text.replace(key, placeholders["<< Date >>"])
                                 apply_formatting(run, font_name, font_size, bold=True)
-                        else:
-                            run.text = run.text.replace(key, value)  # Replace other placeholders
+                            # Plain and formatted for signature date
+                            elif key == "<< Date (Signature) >>":
+                                run.text = run.text.replace(key, placeholders["<< Date (Signature) >>"])
+                                apply_formatting(run, font_name, font_size, bold=False)
+                            else:
+                                # General placeholder replacement
+                                run.text = run.text.replace(key, value)
 
     # Check for placeholders inside tables
     for table in doc.tables:
@@ -45,27 +51,22 @@ def replace_and_format(doc, placeholders, font_name, font_size, option):
                                     WD_ALIGN_PARAGRAPH.LEFT if key == "<< Address >>" else WD_ALIGN_PARAGRAPH.CENTER
                                 )
                                 for run in paragraph.runs:
-                                    apply_formatting(run, font_name, font_size, bold=(key == "<< Date >>"))
-                            cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+                                    if key == "<< Date (Signature) >>":
+                                        apply_formatting(run, font_name, font_size, bold=False)
+                                    else:
+                                        apply_formatting(run, font_name, font_size)
 
-
+    # Ensure proper alignment for signature details
     for para in doc.paragraphs:
         if "Signature Details:" in para.text:
             para.alignment = WD_ALIGN_PARAGRAPH.LEFT  # Keep "Signature Details:" left-aligned
             for run in para.runs:
                 run.font.size = Pt(11)  # Ensure consistent font size
-        elif any(placeholder in para.text for placeholder in placeholders.keys()):
-            for key, value in placeholders.items():
-                if key in para.text:
-                    para.text = para.text.replace(key, value)
-                    para.alignment = WD_ALIGN_PARAGRAPH.CENTER  # Center-align placeholders where necessary
-                    for run in para.runs:
-                        run.font.size = Pt(11)  # Ensure consistent font size
-        if "<< Date >>" in para.text:
-            for run in para.runs:
-                if "<< Date >>" in run.text:
-                    run.text = run.text.replace("<< Date >>", placeholders.get("<< Date >>", ""))
-                    apply_formatting(run, "Times New Roman", 12, bold=True)
+        elif "<< Date >>" in para.text or "<< Date (Signature) >>" in para.text:
+            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+
+
 
 def edit_word_template(template_path, output_path, placeholders, font_name, font_size, option):
     """Edit Word document and apply formatting."""
@@ -252,7 +253,7 @@ if option in ["NDA", "Contract"]:
     client_name = st.text_input("Enter Client Name:", key="client_name")
     company_name = st.text_input("Enter Company Name:", key="company_name")
     address = st.text_area("Enter Address:", key="address")
-    
+
     date_field = st.date_input("Enter Date:", datetime.today(), key="date_field")
     formatted_date = format_date_with_suffix(date_field)  # Use the new function
 
@@ -262,6 +263,7 @@ if option in ["NDA", "Contract"]:
         "<< Client Name >>": client_name,
         "<<Company Name>>": company_name,
         "<<Address>>": address,
+        "<< Date (Signature) >>": date_field.strftime("%d-%m-%Y"),
         "<< Date >>": formatted_date, 
     }
 
