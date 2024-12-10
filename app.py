@@ -226,7 +226,7 @@ def edit_pricing_template(template_path, output_path, name, designation, contact
 st.title("Dynamic Document Generator")
 option = st.selectbox("Select Document Type", ["NDA", "Contract", "Pricing List"], key="doc_type")
 
-base_dir = os.path.abspath(os.path.dirname(_file_))
+base_dir = os.path.abspath(os.path.dirname(__file__))
 if option in ["NDA", "Contract"]:
     region = st.selectbox("Region", ["India", "ROW"], key="region")
     template_path = os.path.join(base_dir, f"{option} Template - {'INDIA 3' if region == 'India' else 'ROW 3'}.docx")
