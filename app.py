@@ -24,15 +24,15 @@ def replace_and_format(doc, placeholders, font_name, font_size, option):
         if para.text:  # Check if paragraph has text
             for key, value in placeholders.items():
                 if key in para.text:
-                    runs = para.runs
-                    for run in runs:
+                    for run in para.runs:
                         if key in run.text:
                             run.text = run.text.replace(key, value)
-                            if para == doc.paragraphs[0]:  # Bold replacements only in the first paragraph
+                            if key == "<< Date >>":  # Apply specific formatting for Date
                                 apply_formatting(run, font_name, font_size, bold=True)
                         else:
-                            run.text = run.text.replace(key, value)  # For other paragraphs
+                            run.text = run.text.replace(key, value)  # Replace other placeholders
 
+    # Check for placeholders inside tables
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
@@ -41,10 +41,13 @@ def replace_and_format(doc, placeholders, font_name, font_size, option):
                         if key in cell.text:
                             cell.text = cell.text.replace(key, value)
                             for paragraph in cell.paragraphs:
-                                paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT if key == "<<Address>>" else WD_ALIGN_PARAGRAPH.CENTER
+                                paragraph.alignment = (
+                                    WD_ALIGN_PARAGRAPH.LEFT if key == "<< Address >>" else WD_ALIGN_PARAGRAPH.CENTER
+                                )
                                 for run in paragraph.runs:
-                                    apply_formatting(run, "Times New Roman", 11 if option == "NDA" else 12)  # Ensure consistent formatting
+                                    apply_formatting(run, font_name, font_size, bold=(key == "<< Date >>"))
                             cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+
 
     for para in doc.paragraphs:
         if "Signature Details:" in para.text:
@@ -67,9 +70,10 @@ def replace_and_format(doc, placeholders, font_name, font_size, option):
 def edit_word_template(template_path, output_path, placeholders, font_name, font_size, option):
     """Edit Word document and apply formatting."""
     try:
+        # Load the Word document
         doc = Document(template_path)
 
-        # Replace placeholders and format
+        # Replace placeholders and format text
         replace_and_format(doc, placeholders, font_name, font_size, option)
 
         # Save the modified document
@@ -77,6 +81,7 @@ def edit_word_template(template_path, output_path, placeholders, font_name, font
         return output_path
     except Exception as e:
         raise Exception(f"Error editing Word template: {e}")
+
 
 def choose_template(currency, include_digital_services):
     """Select the appropriate template based on currency and digital services inclusion."""
@@ -221,6 +226,19 @@ def edit_pricing_template(template_path, output_path, name, designation, contact
     except Exception as e:
         raise Exception(f"Error editing Word template: {e}")
 
+def format_date_with_suffix(date_obj):
+    day = date_obj.day
+    month = date_obj.strftime("%B")
+    year = date_obj.year
+    
+    # Determine the suffix for the day
+    if 10 <= day % 100 <= 20:  # Special case for 11th, 12th, 13th, etc.
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+    
+    # Return the formatted date
+    return f"{day}{suffix} {month} {year}"
 
 # Streamlit App
 st.title("Dynamic Document Generator")
@@ -234,13 +252,17 @@ if option in ["NDA", "Contract"]:
     client_name = st.text_input("Enter Client Name:", key="client_name")
     company_name = st.text_input("Enter Company Name:", key="company_name")
     address = st.text_area("Enter Address:", key="address")
+    
     date_field = st.date_input("Enter Date:", datetime.today(), key="date_field")
+    formatted_date = format_date_with_suffix(date_field)  # Use the new function
+
+
 
     placeholders = {
         "<< Client Name >>": client_name,
         "<<Company Name>>": company_name,
         "<<Address>>": address,
-        "<< Date >>": date_field.strftime("%d-%m-%Y"),
+        "<< Date >>": formatted_date, 
     }
 
 elif option == "Pricing List":
@@ -301,7 +323,6 @@ if st.button("Generate Document", key="generate_button"):
     file_type = {
         "NDA": "NDA Agreement",
         "Contract": "Contract Agreement",
-        "Pricing List": "Pricing List"
     }[option]
 
     formatted_date = date_field.strftime("%d %b %Y")  # e.g., 10 Dec 2024
@@ -309,15 +330,10 @@ if st.button("Generate Document", key="generate_button"):
     word_output_path = os.path.join(base_dir, file_name)
 
     try:
-        if option == "Pricing List":
-            updated_word_path = edit_pricing_template(
-                template_path, word_output_path, client_name, designation, contact, email, location, selected_services
-            )
-        else:
-            font_size = 11 if option == "NDA" else 12
-            updated_word_path = edit_word_template(
-                template_path, word_output_path, placeholders, "Times New Roman", font_size, option
-            )
+        font_size = 11 if option == "NDA" else 12
+        updated_word_path = edit_word_template(
+            template_path, word_output_path, placeholders, "Times New Roman", font_size, option
+        )
 
         st.success(f"{option} Document Generated Successfully!")
 
