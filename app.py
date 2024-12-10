@@ -94,7 +94,10 @@ def choose_template(currency, include_digital_services):
             False: "DM & Automations Services Pricing - Pounds (without digital service).docx",
         },
     }
-    return templates[currency][include_digital_services]    
+    return templates[currency][include_digital_services]  
+
+
+
 
 def edit_pricing_template(template_path, output_path, name, designation, contact, email, location, selected_services):
     try:
@@ -111,10 +114,12 @@ def edit_pricing_template(template_path, output_path, name, designation, contact
             "Monthly Maintenance & Reporting",
         ]
 
+
         # Check if at least one digital marketing service is selected
         include_digital_services = any(service in selected_services for service in digital_marketing_services)
 
         template_path = choose_template(currency, include_digital_services)
+        all_services_selected = set(selected_services) >= set(digital_marketing_services)
 
         # Load and update the chosen template
         doc = Document(template_path)        
@@ -187,13 +192,28 @@ def edit_pricing_template(template_path, output_path, name, designation, contact
 
                 for row_idx in reversed(rows_to_delete):
                     table._element.remove(table.rows[row_idx]._element)
+                    
+        # Handle "Next Steps" dynamically based on the service table position
+        service_table_found = False
+        for table in doc.tables:
+            if "Name" in table.rows[0].cells[0].text:  # Identify the service table
+                service_table_found = True
+                table_position = table._element.getparent().index(table._element)
+                break
 
-        # Ensure "Next Steps" starts on a new page
-        for para in doc.paragraphs:
+        # Adjust the "Next Steps" section
+        next_steps_found = False
+        for idx, para in enumerate(doc.paragraphs):
             if "Next Steps:" in para.text:
-                page_break = para.insert_paragraph_before()
-                run = page_break.add_run()
-                run.add_break(WD_BREAK.PAGE)
+                next_steps_found = True
+                # Check if the service table and "Next Steps" are on the same page
+                if service_table_found:
+                    # Avoid unnecessary page breaks
+                    if idx - table_position > 10:  # Adjust this threshold based on your layout
+                        page_break = para.insert_paragraph_before()
+                        run = page_break.add_run()
+                        run.add_break(WD_BREAK.PAGE)
+                break
 
         # Save the updated document
         doc.save(output_path)
@@ -206,7 +226,7 @@ def edit_pricing_template(template_path, output_path, name, designation, contact
 st.title("Dynamic Document Generator")
 option = st.selectbox("Select Document Type", ["NDA", "Contract", "Pricing List"], key="doc_type")
 
-base_dir = os.path.abspath(os.path.dirname(__file__))
+base_dir = os.path.abspath(os.path.dirname(_file_))
 if option in ["NDA", "Contract"]:
     region = st.selectbox("Region", ["India", "ROW"], key="region")
     template_path = os.path.join(base_dir, f"{option} Template - {'INDIA 3' if region == 'India' else 'ROW 3'}.docx")
