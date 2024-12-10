@@ -2,6 +2,8 @@ import streamlit as st
 from docx import Document
 from datetime import datetime
 import os
+import platform
+import subprocess
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
 from docx.shared import Pt
@@ -9,66 +11,113 @@ from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 from docx.enum.text import WD_BREAK
 
-port = int(os.environ.get("PORT", 8501))
+def apply_formatting(run, font_name, font_size, bold=False):
+    """Apply specific formatting to a run."""
+    run.font.name = font_name
+    run._element.rPr.rFonts.set(qn('w:eastAsia'), font_name)
+    run.font.size = Pt(font_size)
+    run.bold = bold
 
-# Function to edit the Word template dynamically
-def edit_word_template(template_path, output_path, placeholders):
-    try:
-        doc = Document(template_path)
+def replace_and_format(doc, placeholders, font_name, font_size, option):
+    """Replace placeholders and apply formatting."""
+    for para in doc.paragraphs:
+        if para.text:  # Check if paragraph has text
+            for key, value in placeholders.items():
+                if key in para.text:
+                    runs = para.runs
+                    for run in runs:
+                        if key in run.text:
+                            run.text = run.text.replace(key, value)
+                            if para == doc.paragraphs[0]:  # Bold replacements only in the first paragraph
+                                apply_formatting(run, font_name, font_size, bold=True)
+                        else:
+                            run.text = run.text.replace(key, value)  # For other paragraphs
 
-        # Replace placeholders in paragraphs and set alignment
-        for para in doc.paragraphs:
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                if cell.text.strip():  # Ensure cell is not empty
+                    for key, value in placeholders.items():
+                        if key in cell.text:
+                            cell.text = cell.text.replace(key, value)
+                            for paragraph in cell.paragraphs:
+                                paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT if key == "<<Address>>" else WD_ALIGN_PARAGRAPH.CENTER
+                                for run in paragraph.runs:
+                                    apply_formatting(run, "Times New Roman", 11 if option == "NDA" else 12)  # Ensure consistent formatting
+                            cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+
+    for para in doc.paragraphs:
+        if "Signature Details:" in para.text:
+            para.alignment = WD_ALIGN_PARAGRAPH.LEFT  # Keep "Signature Details:" left-aligned
+            for run in para.runs:
+                run.font.size = Pt(11)  # Ensure consistent font size
+        elif any(placeholder in para.text for placeholder in placeholders.keys()):
             for key, value in placeholders.items():
                 if key in para.text:
                     para.text = para.text.replace(key, value)
-                    # Set alignment to justify
-                    para.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+                    para.alignment = WD_ALIGN_PARAGRAPH.CENTER  # Center-align placeholders where necessary
+                    for run in para.runs:
+                        run.font.size = Pt(11)  # Ensure consistent font size
+        if "<< Date >>" in para.text:
+            for run in para.runs:
+                if "<< Date >>" in run.text:
+                    run.text = run.text.replace("<< Date >>", placeholders.get("<< Date >>", ""))
+                    apply_formatting(run, "Times New Roman", 12, bold=True)
 
-        # Replace placeholders in tables and set alignment
-        for table in doc.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    if cell.text.strip():  # Check if the cell is not empty
-                        for key, value in placeholders.items():
-                            if key in cell.text:
-                                # Replace placeholder
-                                cell.text = cell.text.replace(key, value)
+def edit_word_template(template_path, output_path, placeholders, font_name, font_size, option):
+    """Edit Word document and apply formatting."""
+    try:
+        doc = Document(template_path)
 
-                                # Set paragraph alignment for each paragraph in the cell
-                                for paragraph in cell.paragraphs:
-                                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        # Replace placeholders and format
+        replace_and_format(doc, placeholders, font_name, font_size, option)
 
-                                # Set vertical alignment of the cell (top, center, bottom)
-                                cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
-
-                                # Maintain the font style
-                                for run in paragraph.runs:
-                                    run.font.name = 'Calibri'
-                                    run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
-                                    run.font.size = Pt(10)  # Set font size to match other text and make it smaller
-
-        # Adjust signature alignment specifically for NDA India and ROW templates
-        for para in doc.paragraphs:
-            if "Signature Details:" in para.text:
-                for i, run in enumerate(para.runs):
-                    if "<<Company Name>>" in run.text:
-                        run.text = run.text.replace("<<Company Name>>", placeholders.get("<<Company Name>>", ""))
-                    if "<< Date >>" in run.text:
-                        run.text = run.text.replace("<< Date >>", placeholders.get("<< Date >>", ""))
-                        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        for r in para.runs:
-                            r.font.size = Pt(8)  # Make the date font size consistent
-
-        # Save the updated document
+        # Save the modified document
         doc.save(output_path)
         return output_path
     except Exception as e:
         raise Exception(f"Error editing Word template: {e}")
 
-# Function to handle pricing document edit
+def choose_template(currency, include_digital_services):
+    """Select the appropriate template based on currency and digital services inclusion."""
+    templates = {
+        "USD": {
+            True: "DM & Automations Services Pricing - USD.docx",
+            False: "DM & Automations Services Pricing - USD (without digital service).docx",
+        },
+        "Rupees": {
+            True: "DM & Automations Services Pricing - Rupees.docx",
+            False: "DM & Automations Services Pricing - Rupees (without digital service).docx",
+        },
+        "Pounds": {
+            True: "DM & Automations Services Pricing - Pounds.docx",
+            False: "DM & Automations Services Pricing - Pounds (without digital service).docx",
+        },
+    }
+    return templates[currency][include_digital_services]    
+
 def edit_pricing_template(template_path, output_path, name, designation, contact, email, location, selected_services):
     try:
-        doc = Document(template_path)
+        
+        digital_marketing_services = [
+            "Marketing Strategy",
+            "Social Media Channels",
+            "Creatives (10 Per Month)",
+            "Creatives (20 Per Month)",
+            "Creatives (30 Per Month)",
+            "Reels (10 Reels)",
+            "Meta Ad Account Setup & Pages Setup",
+            "Paid Ads (Lead Generation)",
+            "Monthly Maintenance & Reporting",
+        ]
+
+        # Check if at least one digital marketing service is selected
+        include_digital_services = any(service in selected_services for service in digital_marketing_services)
+
+        template_path = choose_template(currency, include_digital_services)
+
+        # Load and update the chosen template
+        doc = Document(template_path)        
 
         # Replace placeholders in the general paragraphs
         for para in doc.paragraphs:
@@ -82,7 +131,15 @@ def edit_pricing_template(template_path, output_path, name, designation, contact
                 para.text = para.text.replace("<<Client Email>>", email)
             if "<<Client Location>>" in para.text:
                 para.text = para.text.replace("<<Client Location>>", location)
+            if "<< Date >>" in para.text:
+                for run in para.runs:
+                    if "<< Date >>" in run.text:
+            # Use the input date and format it as "dd/mm/yyyy"
+                       formatted_date = date_field.strftime("%d/%m/%Y")
+                       run.text = run.text.replace("<< Date >>", formatted_date)
+                       apply_formatting(run, "Times New Roman", 12, bold=True)
 
+                        
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
@@ -117,9 +174,9 @@ def edit_pricing_template(template_path, output_path, name, designation, contact
                         for paragraph in cell.paragraphs:
                             paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
                             for run in paragraph.runs:
-                                run.font.name = 'Calibri'
-                                run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Calibri')
-                                run.font.size = Pt(8)  # Set font size smaller
+                                run.font.name = 'Times New Roman'
+                                run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Times New Roman')
+                                run.font.size = Pt(10)  # Set font size smaller
                 spoc_table_found = False
             else:
                 rows_to_delete = []
@@ -144,16 +201,12 @@ def edit_pricing_template(template_path, output_path, name, designation, contact
     except Exception as e:
         raise Exception(f"Error editing Word template: {e}")
 
+
 # Streamlit App
 st.title("Dynamic Document Generator")
-
-# Dropdown for document selection
 option = st.selectbox("Select Document Type", ["NDA", "Contract", "Pricing List"], key="doc_type")
 
-# Base directory for templates
 base_dir = os.path.abspath(os.path.dirname(__file__))
-
-# Input form fields for NDA and Contract
 if option in ["NDA", "Contract"]:
     region = st.selectbox("Region", ["India", "ROW"], key="region")
     template_path = os.path.join(base_dir, f"{option} Template - {'INDIA 3' if region == 'India' else 'ROW 3'}.docx")
@@ -161,7 +214,7 @@ if option in ["NDA", "Contract"]:
     client_name = st.text_input("Enter Client Name:", key="client_name")
     company_name = st.text_input("Enter Company Name:", key="company_name")
     address = st.text_area("Enter Address:", key="address")
-    date_field = st.date_input("Enter Date:", datetime.today(), min_value=datetime.today(), max_value=datetime.today(), key="date_field")
+    date_field = st.date_input("Enter Date:", datetime.today(), key="date_field")
 
     placeholders = {
         "<< Client Name >>": client_name,
@@ -170,7 +223,6 @@ if option in ["NDA", "Contract"]:
         "<< Date >>": date_field.strftime("%d-%m-%Y"),
     }
 
-# Input form fields for Pricing List
 elif option == "Pricing List":
     currency = st.selectbox("Select Currency", ["USD", "Rupees", "Pounds"], key="currency")
     if currency == "USD":
@@ -185,6 +237,7 @@ elif option == "Pricing List":
     contact = st.text_input("Enter Contact Number:", key="contact")
     email = st.text_input("Enter Email ID:", key="email")
     location = st.selectbox("Location", ["India", "ROW"], key="location")
+    date_field = st.date_input("Enter Date:", datetime.today(), key="date_field_pricing")
     select_all_services = st.checkbox("Select All Services", key="select_all_services")
     services = [
         "Landing page website (design + development)",
@@ -213,72 +266,49 @@ elif option == "Pricing List":
     else:
         selected_services = st.multiselect("Select Services", services, key="selected_services")
 
+    placeholders = {
+        "<<Client Name>>": client_name,
+        "<<Client Designation>>": designation,
+        "<<Client Contact>>": contact,
+        "<<Client Email>>": email,
+        "<<Client Location>>": location,
+        "<< Date >>": date_field.strftime("%d-%m-%Y"),
+    }
+
 if st.button("Generate Document", key="generate_button"):
-    if option == "Pricing List" and (not all([client_name, designation, contact, email, location]) or not selected_services):
-        st.error("All fields and at least one service must be selected!")
-    elif option in ["NDA", "Contract"] and not all(placeholders.values()):
-        st.error("Please fill all required fields!")
-    else:
-        current_date_str = datetime.now().strftime("%d_%b_%Y").lower()
-        word_output_path = os.path.join(base_dir, f"{client_name.lower()}_{option.lower().replace(' ', '_')}_{current_date_str}.docx")
+    current_date_str = datetime.now().strftime("%d_%b_%Y").lower()
+    
+    file_type = {
+        "NDA": "NDA Agreement",
+        "Contract": "Contract Agreement",
+        "Pricing List": "Pricing List"
+    }[option]
 
-        try:
-            if option == "Pricing List":
-                updated_word_path = edit_pricing_template(
-                    template_path, word_output_path, client_name, designation, contact, email, location, selected_services
-                )
-            else:
-                updated_word_path = edit_word_template(template_path, word_output_path, placeholders)
+    formatted_date = date_field.strftime("%d %b %Y")  # e.g., 10 Dec 2024
+    file_name = f"{file_type} - {client_name} {formatted_date}.docx"
+    word_output_path = os.path.join(base_dir, file_name)
 
-            st.session_state["document_generated"] = True
-            st.session_state["current_options"] = {
-                "option": option,
-                "region": region if option in ["NDA", "Contract"] else None,
-                "currency": currency if option == "Pricing List" else None,
-                "client_name": client_name,
-                "designation": designation if option == "Pricing List" else None,
-                "contact": contact if option == "Pricing List" else None,
-                "email": email if option == "Pricing List" else None,
-                "location": location if option == "Pricing List" else None,
-                "selected_services": selected_services if option == "Pricing List" else None,
-                "placeholders": placeholders if option in ["NDA", "Contract"] else None,
-                "current_date_str": current_date_str
-            }
+    try:
+        if option == "Pricing List":
+            updated_word_path = edit_pricing_template(
+                template_path, word_output_path, client_name, designation, contact, email, location, selected_services
+            )
+        else:
+            font_size = 11 if option == "NDA" else 12
+            updated_word_path = edit_word_template(
+                template_path, word_output_path, placeholders, "Times New Roman", font_size, option
+            )
 
-            st.success(f"{option} Document Generated Successfully!")
-            st.session_state["show_download_buttons"] = True
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
+        st.success(f"{option} Document Generated Successfully!")
 
-# Logic to hide download buttons if options are changed
-def options_changed():
-    current_options = st.session_state.get("current_options", {})
-    if not current_options:
-        return True
-    if current_options.get("option") != option:
-        return True
-    if option in ["NDA", "Contract"]:
-        if current_options.get("region") != region or \
-           current_options.get("client_name") != client_name or \
-           current_options.get("placeholders") != placeholders:
-            return True
-    if option == "Pricing List":
-        if current_options.get("currency") != currency or \
-           current_options.get("client_name") != client_name or \
-           current_options.get("designation") != designation or \
-           current_options.get("contact") != contact or \
-           current_options.get("email") != email or \
-           current_options.get("location") != location or \
-           current_options.get("selected_services") != selected_services:
-            return True
-    return False
+        # Add download button
+        with open(updated_word_path, "rb") as word_file:
+            st.download_button(
+                label="Download Word Document",
+                data=word_file,
+                file_name=file_name,
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
 
-if options_changed():
-    st.session_state["document_generated"] = False
-    st.session_state["show_download_buttons"] = False
-
-if st.session_state.get("document_generated"):
-    current_date_str = st.session_state.get("current_options").get("current_date_str")
-    word_output_path = os.path.join(base_dir, f"{client_name.lower()}_{option.lower().replace(' ', '_')}_{current_date_str}.docx")
-    with open(word_output_path, "rb") as word_file:
-        st.download_button(f"Download {option} (Word)", word_file, file_name=f"{client_name.lower()}_{option.lower().replace(' ', '_')}_{current_date_str}.docx", key="download_word")
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
