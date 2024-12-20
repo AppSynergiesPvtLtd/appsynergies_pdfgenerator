@@ -533,6 +533,8 @@ if option !="Invoice":
     file_type = {
         "NDA": "NDA Agreement",
         "Contract": "Contract Agreement",
+        "Pricing List": "Pricing List Document",
+        
     }[option]
 
     formatted_date = date_field.strftime("%d %b %Y")  # e.g., 10 Dec 2024
