@@ -21,24 +21,18 @@ def apply_formatting(run, font_name, font_size, bold=False):
 def replace_and_format(doc, placeholders, font_name, font_size, option):
     """Replace placeholders and apply formatting."""
     for para in doc.paragraphs:
-        if para.text.strip():  # Check if paragraph has text
+        if para.text:  # Check if paragraph has text
             for key, value in placeholders.items():
                 if key in para.text:
-                    for run in para.runs:
+                    runs = para.runs
+                    for run in runs:
                         if key in run.text:
-                            # Bold and formatted for paragraph date
-                            if key == "<< Date >>":
-                                run.text = run.text.replace(key, placeholders["<< Date >>"])
+                            run.text = run.text.replace(key, value)
+                            if para == doc.paragraphs[0]:  # Bold replacements only in the first paragraph
                                 apply_formatting(run, font_name, font_size, bold=True)
-                            # Plain and formatted for signature date
-                            elif key == "<< Date (Signature) >>":
-                                run.text = run.text.replace(key, placeholders["<< Date (Signature) >>"])
-                                apply_formatting(run, font_name, font_size, bold=False)
-                            else:
-                                # General placeholder replacement
-                                run.text = run.text.replace(key, value)
+                        else:
+                            run.text = run.text.replace(key, value)  # For other paragraphs
 
-    # Check for placeholders inside tables
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
@@ -47,34 +41,35 @@ def replace_and_format(doc, placeholders, font_name, font_size, option):
                         if key in cell.text:
                             cell.text = cell.text.replace(key, value)
                             for paragraph in cell.paragraphs:
-                                paragraph.alignment = (
-                                    WD_ALIGN_PARAGRAPH.LEFT if key == "<< Address >>" else WD_ALIGN_PARAGRAPH.CENTER
-                                )
+                                paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT if key == "<<Address>>" else WD_ALIGN_PARAGRAPH.CENTER
                                 for run in paragraph.runs:
-                                    if key == "<< Date (Signature) >>":
-                                        apply_formatting(run, font_name, font_size, bold=False)
-                                    else:
-                                        apply_formatting(run, font_name, font_size)
+                                    apply_formatting(run, "Times New Roman", 11 if option == "NDA" else 12)  # Ensure consistent formatting
+                            cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
 
-    # Ensure proper alignment for signature details
     for para in doc.paragraphs:
         if "Signature Details:" in para.text:
             para.alignment = WD_ALIGN_PARAGRAPH.LEFT  # Keep "Signature Details:" left-aligned
             for run in para.runs:
                 run.font.size = Pt(11)  # Ensure consistent font size
-        elif "<< Date >>" in para.text or "<< Date (Signature) >>" in para.text:
-            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-
-
-
+        elif any(placeholder in para.text for placeholder in placeholders.keys()):
+            for key, value in placeholders.items():
+                if key in para.text:
+                    para.text = para.text.replace(key, value)
+                    para.alignment = WD_ALIGN_PARAGRAPH.CENTER  # Center-align placeholders where necessary
+                    for run in para.runs:
+                        run.font.size = Pt(11)  # Ensure consistent font size
+        if "<< Date >>" in para.text:
+            for run in para.runs:
+                if "<< Date >>" in run.text:
+                    run.text = run.text.replace("<< Date >>", placeholders.get("<< Date >>", ""))
+                    apply_formatting(run, "Times New Roman", 12, bold=True)
 
 def edit_word_template(template_path, output_path, placeholders, font_name, font_size, option):
     """Edit Word document and apply formatting."""
     try:
-        # Load the Word document
         doc = Document(template_path)
 
-        # Replace placeholders and format text
+        # Replace placeholders and format
         replace_and_format(doc, placeholders, font_name, font_size, option)
 
         # Save the modified document
@@ -82,7 +77,6 @@ def edit_word_template(template_path, output_path, placeholders, font_name, font
         return output_path
     except Exception as e:
         raise Exception(f"Error editing Word template: {e}")
-
 
 def choose_template(currency, include_digital_services):
     """Select the appropriate template based on currency and digital services inclusion."""
@@ -100,10 +94,7 @@ def choose_template(currency, include_digital_services):
             False: "DM & Automations Services Pricing - Pounds (without digital service).docx",
         },
     }
-    return templates[currency][include_digital_services]  
-
-
-
+    return templates[currency][include_digital_services]    
 
 def edit_pricing_template(template_path, output_path, name, designation, contact, email, location, selected_services):
     try:
@@ -226,55 +217,6 @@ def edit_pricing_template(template_path, output_path, name, designation, contact
         return output_path
     except Exception as e:
         raise Exception(f"Error editing Word template: {e}")
-import streamlit as st
-from datetime import datetime
-from docx import Document
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-
-
-def replace_placeholders(doc, placeholders):
-    """Replace placeholders in a document while maintaining proper alignment."""
-    # Keywords to detect left-side content
-    left_side_keywords = [
-        "BILL TO", "Mobile No", "Address", "Email", "Project Name", "Company Name"
-    ]
-
-    # Iterate through all paragraphs
-    for para in doc.paragraphs:
-        for key, value in placeholders.items():
-            if key in para.text:
-                inline = para.runs
-                for i in range(len(inline)):
-                    if key in inline[i].text:
-                        inline[i].text = inline[i].text.replace(key, value)
-                # Force left alignment for specific placeholders
-                if any(keyword in para.text for keyword in left_side_keywords):
-                    para.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                    para.paragraph_format.left_indent = None  # Reset any indent
-                    para.paragraph_format.first_line_indent = None  # Reset first-line indent
-
-    # Iterate through all tables
-    for table in doc.tables:
-        for row in table.rows:
-            for cell in row.cells:
-                for para in cell.paragraphs:
-                    for key, value in placeholders.items():
-                        if key in para.text:
-                            inline = para.runs
-                            for i in range(len(inline)):
-                                if key in inline[i].text:
-                                    inline[i].text = inline[i].text.replace(key, value)
-                            # Force left alignment for specific placeholders in tables
-                            if any(keyword in para.text for keyword in left_side_keywords):
-                                para.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                                para.paragraph_format.left_indent = None
-                                para.paragraph_format.first_line_indent = None
-
-    return doc
-
-    return doc
-
-
 def format_percentage(value):
     """Format percentage without decimals."""
     return f"{int(value)}%"
@@ -301,10 +243,7 @@ def format_price(price, currency="USD"):
         return f"Rs. {formatted_price}"  # Rupees format
     else:
         return f"{formatted_price} {currency}"  # Default format
-
-
-
-
+    
 def generate_invoice():
     """Streamlit app for generating invoices."""
     st.title("Invoice Generator")
@@ -458,18 +397,14 @@ if option in ["NDA", "Contract"]:
     client_name = st.text_input("Enter Client Name:", key="client_name")
     company_name = st.text_input("Enter Company Name:", key="company_name")
     address = st.text_area("Enter Address:", key="address")
-
     date_field = st.date_input("Enter Date:", datetime.today(), key="date_field")
-    formatted_date = format_date_with_suffix(date_field)  # Use the new function
-
-
 
     placeholders = {
         "<< Client Name >>": client_name,
         "<<Company Name>>": company_name,
         "<<Address>>": address,
         "<< Date (Signature) >>": date_field.strftime("%d-%m-%Y"),
-        "<< Date >>": formatted_date, 
+        "<< Date >>": date_field.strftime("%d-%m-%Y"),
     }
 
 elif option == "Pricing List":
@@ -523,18 +458,14 @@ elif option == "Pricing List":
         "<<Client Location>>": location,
         "<< Date >>": date_field.strftime("%d-%m-%Y"),
     }
-elif option =='Invoice':
-    generate_invoice()
 
-if option !="Invoice":
- if st.button("Generate Document", key="generate_button"):
+if st.button("Generate Document", key="generate_button"):
     current_date_str = datetime.now().strftime("%d_%b_%Y").lower()
     
     file_type = {
         "NDA": "NDA Agreement",
         "Contract": "Contract Agreement",
-        "Pricing List": "Pricing List Document",
-        
+        "Pricing List": "Pricing List"
     }[option]
 
     formatted_date = date_field.strftime("%d %b %Y")  # e.g., 10 Dec 2024
@@ -542,10 +473,15 @@ if option !="Invoice":
     word_output_path = os.path.join(base_dir, file_name)
 
     try:
-        font_size = 11 if option == "NDA" else 12
-        updated_word_path = edit_word_template(
-            template_path, word_output_path, placeholders, "Times New Roman", font_size, option
-        )
+        if option == "Pricing List":
+            updated_word_path = edit_pricing_template(
+                template_path, word_output_path, client_name, designation, contact, email, location, selected_services
+            )
+        else:
+            font_size = 11 if option == "NDA" else 12
+            updated_word_path = edit_word_template(
+                template_path, word_output_path, placeholders, "Times New Roman", font_size, option
+            )
 
         st.success(f"{option} Document Generated Successfully!")
 
