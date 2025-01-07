@@ -220,6 +220,46 @@ def edit_pricing_template(template_path, output_path, name, designation, contact
 def format_percentage(value):
     """Format percentage without decimals."""
     return f"{int(value)}%"
+def replace_placeholders(doc, placeholders):
+    """Replace placeholders in a document while maintaining proper alignment."""
+    # Keywords to detect left-side content
+    left_side_keywords = [
+        "BILL TO", "Mobile No", "Address", "Email", "Project Name", "Company Name"
+    ]
+    # Iterate through all paragraphs
+    for para in doc.paragraphs:
+        for key, value in placeholders.items():
+            if key in para.text:
+                inline = para.runs
+                for i in range(len(inline)):
+                    if key in inline[i].text:
+                        inline[i].text = inline[i].text.replace(key, value)
+                # Force left alignment for specific placeholders
+                if any(keyword in para.text for keyword in left_side_keywords):
+                    para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    para.paragraph_format.left_indent = None  # Reset any indent
+                    para.paragraph_format.first_line_indent = None  # Reset first-line indent
+    # Iterate through all tables
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for para in cell.paragraphs:
+                    for key, value in placeholders.items():
+                        if key in para.text:
+                            inline = para.runs
+                            for i in range(len(inline)):
+                                if key in inline[i].text:
+                                    inline[i].text = inline[i].text.replace(key, value)
+                            # Force left alignment for specific placeholders in tables
+                            if any(keyword in para.text for keyword in left_side_keywords):
+                                para.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                                para.paragraph_format.left_indent = None
+                                para.paragraph_format.first_line_indent = None
+    return doc
+    
+def format_percentage(value):
+    """Format percentage without decimals."""
+    return f"{int(value)}%"
 
 
 def edit_invoice_template(template_name, output_path, placeholders):
@@ -458,8 +498,10 @@ elif option == "Pricing List":
         "<<Client Location>>": location,
         "<< Date >>": date_field.strftime("%d-%m-%Y"),
     }
-
-if st.button("Generate Document", key="generate_button"):
+if option == "Invoice":
+    generate_invoice()
+if option !="Invoice":    
+ if st.button("Generate Document", key="generate_button"):
     current_date_str = datetime.now().strftime("%d_%b_%Y").lower()
     
     file_type = {
