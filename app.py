@@ -414,6 +414,7 @@ def generate_invoice():
         "<<Service>>": service,
         "<<Price>>": format_price(total_amount, currency),
         "<< Date >>": formatted_date,
+        "<<Total Amount>>": format_price(total_amount, currency),
     }
 
     if service_description:
