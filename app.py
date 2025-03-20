@@ -509,7 +509,20 @@ option = st.selectbox("Select Document Type", ["NDA", "Contract", "Pricing List"
 base_dir = os.path.abspath(os.path.dirname(__file__))
 if option in ["NDA", "Contract"]:
     region = st.selectbox("Region", ["India", "ROW"], key="region")
-    template_path = os.path.join(base_dir, f"{option} Template - {'INDIA 3' if region == 'India' else 'ROW 3'}.docx")
+    
+    # Area input field
+    client_country_name = ""
+    if region == "ROW":
+        area_name = st.text_input("Enter Client Country", key="client_country_name")
+
+    # Determine template suffix based on area input
+    if region == "India":
+        template_suffix = "INDIA 3"
+    else:
+        # Use alternative template if area name is empty
+        template_suffix = "ROW 3 - Copy" if not area_name.strip() else "ROW 3"
+
+    template_path = os.path.join(base_dir, f"{option} Template - {template_suffix}.docx")
 
     client_name = st.text_input("Enter Client Name:", key="client_name")
     company_name = st.text_input("Enter Company Name:", key="company_name")
@@ -523,6 +536,12 @@ if option in ["NDA", "Contract"]:
         "<< Date (Signature) >>": date_field.strftime("%d-%m-%Y"),
         "<< Date >>": date_field.strftime("%d-%m-%Y"),
     }
+
+    
+    # Add Area Name placeholder for ROW contracts
+    if region == "ROW":
+        placeholders["<<Area Name>>"] = area_name
+    
 
 elif option == "Pricing List":
     currency = st.selectbox("Select Currency", ["USD", "Rupees", "Pounds"], key="currency")
