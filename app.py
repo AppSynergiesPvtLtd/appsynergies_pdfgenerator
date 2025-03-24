@@ -295,10 +295,10 @@ def replace_placeholders(doc, placeholders):
     for para in doc.paragraphs:
         for key, value in placeholders.items():
             if key in para.text:
-                inline = para.runs
-                for i in range(len(inline)):
-                    if key in inline[i].text:
-                        inline[i].text = inline[i].text.replace(key, value)
+                for run in para.runs:
+                    if key in run.text:
+                        run.text = run.text.replace(key, value)
+
                 # Force left alignment for specific placeholders
                 if any(keyword in para.text for keyword in left_side_keywords):
                     para.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -342,7 +342,7 @@ def edit_invoice_template(template_name, output_path, placeholders):
 
 def format_price(price, currency):
     """Format price to display correctly with the currency."""
-    if price.is_integer():
+    if isinstance(price, float) and price.is_integer():
         formatted_price = f"{int(price)}"
     else:
         formatted_price = f"{price:.2f}"
@@ -388,6 +388,8 @@ def generate_invoice():
         max_p2 = 100 - p1_percentage
         p2_percentage = st.number_input("Percentage for Second Installment", min_value=0.0, max_value=max_p2)
         p3_percentage = 100 - (p1_percentage + p2_percentage)
+        st.info(f"Percentage for Third Installment will be automatically set to: {p3_percentage}%")
+
         
     if payment_option == "Two Parts":
        p1_percentage = round(p1_percentage)
