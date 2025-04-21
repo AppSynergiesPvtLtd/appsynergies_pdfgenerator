@@ -1,28 +1,23 @@
-# Use a lightweight Python image
-FROM python:3.9-slim
+# Dockerfile
+FROM python:3.10-slim
 
-# Set the working directory
+# Set working directory
 WORKDIR /app
 
-# Copy your application files
-COPY . /app
+# Copy requirements and install
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Install required dependencies
-RUN apt-get update && \
-    apt-get install -y curl unzip fonts-liberation fonts-roboto && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+# Copy all files
+COPY . .
 
-# Install LibreOffice
-RUN apt-get update && \
-    apt-get install -y libreoffice libreoffice-writer && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+# Streamlit-specific: disable sharing and telemetry
+ENV STREAMLIT_SERVER_ENABLE_CORS=false
+ENV STREAMLIT_SERVER_HEADLESS=true
+ENV STREAMLIT_SERVER_PORT=8080
 
-# Install Python dependencies
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Expose the port Streamlit will run on
+EXPOSE 8080
 
-# Expose the port Streamlit will use
-EXPOSE 8501
-
-# Set the Streamlit command with the port from $PORT
-CMD streamlit run app.py --server.port=$PORT --server.address=0.0.0.0
+# Start the app
+CMD ["streamlit", "run", "app.py"]
