@@ -350,6 +350,8 @@ def format_price(price, currency):
         return f"{formatted_price} USD"
     elif currency == "Rupees":
         return f"Rs. {formatted_price}"
+    elif currency == "Pounds":
+        return f"£{formatted_price}"
     return formatted_price
 
 
@@ -371,7 +373,7 @@ def generate_invoice():
     project_name = st.text_input("Project Name")
     email = st.text_input("Email")
     service = st.text_input("Service")
-    currency = st.selectbox("Currency", ["USD", "Rupees"])
+    currency = st.selectbox("Currency", ["USD", "Rupees", "Pounds"])
     total_amount = st.number_input("Total Amount", min_value=0.0, format="%.2f")
     payment_option = st.selectbox("Payment Option", ["One Part", "Two Parts", "Three Parts"])
     invoice_date = st.date_input("Invoice Date", value=datetime.today())
@@ -390,20 +392,19 @@ def generate_invoice():
         p3_percentage = 100 - (p1_percentage + p2_percentage)
         st.info(f"Percentage for Third Installment will be automatically set to: {p3_percentage}%")
 
-        
+    # Calculation logic
     if payment_option == "Two Parts":
-       p1_percentage = round(p1_percentage)
-       p2_percentage = 100 - p1_percentage
-       price = round(total_amount * (p1_percentage / 100))
-       price2 = total_amount - price
-       
+        p1_percentage = round(p1_percentage)
+        p2_percentage = 100 - p1_percentage
+        price = round(total_amount * (p1_percentage / 100))
+        price2 = total_amount - price
     elif payment_option == "Three Parts":
-       p1_percentage = round(p1_percentage)
-       p2_percentage = round(p2_percentage)
-       p3_percentage = 100 - (p1_percentage + p2_percentage)
-       price = round(total_amount * (p1_percentage / 100))
-       price2 = round(total_amount * (p2_percentage / 100))
-       price3 = total_amount - (price + price2)      
+        p1_percentage = round(p1_percentage)
+        p2_percentage = round(p2_percentage)
+        p3_percentage = 100 - (p1_percentage + p2_percentage)
+        price = round(total_amount * (p1_percentage / 100))
+        price2 = round(total_amount * (p2_percentage / 100))
+        price3 = total_amount - (price + price2)
 
     formatted_date = invoice_date.strftime("%d/%m/%Y")
     placeholders = {
@@ -428,7 +429,7 @@ def generate_invoice():
             "<<Price>>": format_price(price, currency),
             "<<P2>>": format_percentage(p2_percentage),
             "<<Price2>>": format_price(price2, currency),
-       })
+        })
     elif payment_option == "Three Parts":
         placeholders.update({
             "<<P1>>": format_percentage(p1_percentage),
@@ -438,7 +439,7 @@ def generate_invoice():
             "<<P3>>": format_percentage(p3_percentage),
             "<<Price3>>": format_price(price3, currency),
         })
-        
+
     current_inputs = {
         "region": region,
         "client_name": client_name,
@@ -454,38 +455,43 @@ def generate_invoice():
         "invoice_date": invoice_date,
         "service_description": service_description,
     }
-#HI
+
     track_changes(current_inputs)
-    
 
     if st.button("Generate Invoice"):
         invoice_number = get_next_invoice_number()
         placeholders["<<Invoice>>"] = str(invoice_number)
         
+        # Handle currency-specific templates
+        currency_suffix = ""
+        if currency == "Pounds" and region == "ROW":
+            currency_suffix = " Pounds"
+
         if payment_option == "One Part" and not service_description.strip():
-            # Use no-service templates if service description is empty
             template_name = {
-                "ROW": "One Part Payment ROW no service.docx",
+                "ROW": f"One Part Payment ROW{currency_suffix} no service.docx",
                 "India": "One Part Payment INDIA no service.docx",
             }[region]
         else:
-         template_name = {
-            "One Part": {
-                "ROW": "One Part Payment ROW.docx",
-                "India": "One Part Payment INDIA.docx",
-            },
-            "Two Parts": {
-                "ROW": "Two Parts Payment ROW.docx",
-                "India": "Two Parts Payment INDIA.docx",
-            },
-            "Three Parts": {
-                "ROW": "Three Parts Payment ROW.docx",
-                "India": "Three Parts Payment INDIA.docx",
-            },
-        }[payment_option][region]
+            template_mapping = {
+                "One Part": {
+                    "ROW": f"One Part Payment ROW{currency_suffix}.docx",
+                    "India": "One Part Payment INDIA.docx",
+                },
+                "Two Parts": {
+                    "ROW": f"Two Parts Payment ROW{currency_suffix}.docx",
+                    "India": "Two Parts Payment INDIA.docx",
+                },
+                "Three Parts": {
+                    "ROW": f"Three Parts Payment ROW{currency_suffix}.docx",
+                    "India": "Three Parts Payment INDIA.docx",
+                },
+            }
+            template_name = template_mapping[payment_option][region]
 
         formatted_date_filename = invoice_date.strftime("%d %b %Y")
         st.session_state.output_path = f"Invoice - {client_name} {formatted_date_filename}.docx"
+        
         try:
             edit_invoice_template(template_name, st.session_state.output_path, placeholders)
             st.session_state.download_visible = True
